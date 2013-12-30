@@ -1,13 +1,40 @@
 package org.terracotta.utils.jmxclient.beans;
 
-public class L2OffheapStats {
+public class L2DataStats {
 	private long offheapMaxDataSize;
 	private long offheapTotalAllocatedSize;
 	private long offheapMapAllocatedMemory;
 	private long offheapObjectAllocatedMemory;
+	private int liveObjectCount;
+	private int cachedObjectCount;
+	private long offheapObjectCachedCount;
 	
-	public L2OffheapStats() {
+	public L2DataStats() {
 		super();
+	}
+
+	public int getLiveObjectCount() {
+		return liveObjectCount;
+	}
+
+	public void setLiveObjectCount(int liveObjectCount) {
+		this.liveObjectCount = liveObjectCount;
+	}
+
+	public int getCachedObjectCount() {
+		return cachedObjectCount;
+	}
+
+	public void setCachedObjectCount(int cachedObjectCount) {
+		this.cachedObjectCount = cachedObjectCount;
+	}
+
+	public long getOffheapObjectCachedCount() {
+		return offheapObjectCachedCount;
+	}
+
+	public void setOffheapObjectCachedCount(long offheapObjectCachedCount) {
+		this.offheapObjectCachedCount = offheapObjectCachedCount;
 	}
 
 	public long getOffheapMaxDataSize() {

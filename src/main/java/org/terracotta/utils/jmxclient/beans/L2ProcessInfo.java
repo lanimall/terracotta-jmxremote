@@ -5,7 +5,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 
-public class L2RuntimeInfo {
+public class L2ProcessInfo {
 	private static final DateFormat DEFAULT_DATEFORMAT = new SimpleDateFormat("MM/dd/yyyy HHmmss");
 
 	private String nodeName;
@@ -17,7 +17,7 @@ public class L2RuntimeInfo {
 	private int hostPortL2sConnect;
 	private Date startTime;
 	
-	public L2RuntimeInfo() {
+	public L2ProcessInfo() {
 		super();
 	}
 

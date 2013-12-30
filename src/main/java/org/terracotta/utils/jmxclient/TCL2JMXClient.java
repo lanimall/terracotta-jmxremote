@@ -6,23 +6,24 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
-import net.sf.ehcache.management.sampled.SampledCacheManagerMBean;
+import net.sf.ehcache.management.sampled.SampledCacheMBean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.terracotta.utils.jmxclient.beans.CacheManagerInfo;
+import org.terracotta.utils.jmxclient.beans.CacheStats;
 import org.terracotta.utils.jmxclient.beans.L1UsageStats;
-import org.terracotta.utils.jmxclient.beans.L2OffheapStats;
-import org.terracotta.utils.jmxclient.beans.L2RuntimeInfo;
+import org.terracotta.utils.jmxclient.beans.L2ClientID;
+import org.terracotta.utils.jmxclient.beans.L2ClientRuntimeInfo;
+import org.terracotta.utils.jmxclient.beans.L2DataStats;
+import org.terracotta.utils.jmxclient.beans.L2ProcessInfo;
 import org.terracotta.utils.jmxclient.beans.L2RuntimeStatus;
-import org.terracotta.utils.jmxclient.beans.L2UsageStats;
+import org.terracotta.utils.jmxclient.beans.L2TransactionsStats;
 
 import com.tc.admin.common.MBeanServerInvocationProxy;
 import com.tc.cli.CommandLineBuilder;
@@ -93,25 +94,136 @@ public class TCL2JMXClient extends TCJMXClient {
 		 */
 	}
 
+	public boolean isNodeActive() {
+		boolean active = false;
+		try {
+			if (initConnection()) {
+				active = l2MBean.isActive();
+			} 
+		} catch (Exception e) {
+			handleJMXException("Failed to get client counts", e);
+		}
+
+		return active;
+	}
+
 	/*
 	 * if -1 is returned, an error must have happened
+	 * this method will not return the right count if the current connected server is passive...let's return an exception for now if server is not active
 	 */
 	public int getClientCount() {
 		int clientCount = -1;
 		try {
 			if (initConnection()) {
-				clientCount = dsoMbean.getActiveLicensedClientCount();
-				//				String cacheManagerMbeanQuery = getSampledCacheManagerMBeanQuery();
-				//				Set<ObjectName> cacheManagerNameSet = mbs.queryNames(ObjectName.getInstance(cacheManagerMbeanQuery), null);
-				//				if(null != cacheManagerNameSet){
-				//					clientCount = cacheManagerNameSet.size();
-				//				}
+				if(!l2MBean.isActive())
+					throw new JMXClientException("Node must be active to provide accurate client count.");
+
+				clientCount = dsoMbean.getClients().length;
 			} 
 		} catch (Exception e) {
 			handleJMXException("Failed to get client counts", e);
 		}
 
 		return clientCount;
+	}
+
+	public L2ClientID[] getClientIDs(){
+		ArrayList<L2ClientID> clientIDs = null;
+		try {
+			if (initConnection()) {
+				if(!l2MBean.isActive())
+					throw new JMXClientException("Node must be active to provide accurate client count.");
+
+				ObjectName[] clientsMBeans = dsoMbean.getClients();
+				if(null != clientsMBeans && clientsMBeans.length > 0){
+					clientIDs = new ArrayList<L2ClientID>();
+					for(ObjectName clientMBean: clientsMBeans){
+						DSOClientMBean dsoClientMBean = getMBean(clientMBean, DSOClientMBean.class);
+						if(null != dsoClientMBean){
+							L2ClientID l2ClientID = new L2ClientID(
+									dsoClientMBean.getClientID().toString(), 
+									dsoClientMBean.getRemoteAddress(),
+									dsoClientMBean.getNodeID(),
+									dsoClientMBean.getChannelID().toString(),
+									dsoClientMBean.isTunneledBeansRegistered()
+									);
+
+							clientIDs.add(l2ClientID);
+						}
+					}
+				}
+			} 
+		} catch (Exception e) {
+			handleJMXException("Failed to get client counts", e);
+		}
+
+		return (null != clientIDs)?clientIDs.toArray(new L2ClientID[clientIDs.size()]):null;
+	}
+
+	public L2ClientRuntimeInfo[] getClients() {
+		ArrayList<L2ClientRuntimeInfo> clientsInfoArray = null;
+		try {
+			if (initConnection()) {
+				if(!l2MBean.isActive())
+					throw new JMXClientException("Node must be active to provide accurate client count.");
+
+				ObjectName[] clientsMBeans = dsoMbean.getClients();
+				if(null != clientsMBeans && clientsMBeans.length > 0){
+					clientsInfoArray = new ArrayList<L2ClientRuntimeInfo>();
+					for(ObjectName clientMBean: clientsMBeans){
+						DSOClientMBean dsoClientMBean = getMBean(clientMBean, DSOClientMBean.class);
+						if(null != dsoClientMBean){
+							L2ClientRuntimeInfo l2ClientInfo = new L2ClientRuntimeInfo(
+									new L2ClientID(
+											dsoClientMBean.getClientID().toString(), 
+											dsoClientMBean.getRemoteAddress(),
+											dsoClientMBean.getNodeID(),
+											dsoClientMBean.getChannelID().toString(),
+											dsoClientMBean.isTunneledBeansRegistered()
+											)
+									);
+
+							l2ClientInfo.setLiveObjectCount(dsoClientMBean.getLiveObjectCount());
+							l2ClientInfo.setObjectFaultRate(dsoClientMBean.getObjectFaultRate());
+							l2ClientInfo.setObjectFlushRate(dsoClientMBean.getObjectFlushRate());
+							l2ClientInfo.setPendingTransactionsCount(dsoClientMBean.getPendingTransactionsCount());
+							l2ClientInfo.setServerMapGetSizequestsCount(dsoClientMBean.getServerMapGetSizeRequestsCount());
+							l2ClientInfo.setServerMapGetSizeRequestsRate(dsoClientMBean.getServerMapGetSizeRequestsRate());
+							l2ClientInfo.setServerMapGetValueRequestsCount(dsoClientMBean.getServerMapGetValueRequestsCount());
+							l2ClientInfo.setServerMapGetValueRequestsRate(dsoClientMBean.getServerMapGetValueRequestsRate());
+							l2ClientInfo.setTransactionRate(dsoClientMBean.getTransactionRate());
+
+							clientsInfoArray.add(l2ClientInfo);
+						}
+					}
+				}
+			} 
+		} catch (Exception e) {
+			handleJMXException("Failed to get client counts", e);
+		}
+
+		return (null != clientsInfoArray)?clientsInfoArray.toArray(new L2ClientRuntimeInfo[clientsInfoArray.size()]):null;
+	}
+
+	public CacheStats getCacheStats(final String cacheManagerName, final String cacheName, final String clientID) {
+		CacheStats cacheStats = null;
+		try {
+			if (initConnection()) {
+				SampledCacheMBean cacheMbean = getCacheMBean(cacheManagerName, cacheName, clientID);
+				if(null != cacheMbean){
+					cacheStats = new CacheStats(cacheMbean.getCacheName());
+					cacheStats.setCacheSize(cacheMbean.getSize());
+					cacheStats.setCacheHitRatio(cacheMbean.getCacheHitRatio());
+					cacheStats.setCacheHitRate(cacheMbean.getCacheHitRate());
+					cacheStats.setCacheMissRate(cacheMbean.getCacheMissRate());
+					cacheStats.setCachePutRate(cacheMbean.getCachePutRate());
+				}
+			} 
+		} catch (Exception e) {
+			handleJMXException("Failed to get l2 health ", e);
+		}
+
+		return cacheStats;
 	}
 
 	public Map<String, L2Info[]> getFullTopologyInfo() {
@@ -195,8 +307,32 @@ public class TCL2JMXClient extends TCJMXClient {
 		return nodeFound;
 	}
 
-	public L2RuntimeInfo getL2RuntimeInfo() {
-		L2RuntimeInfo l2RuntimeInfo = null;
+	public L2ProcessInfo[] getAllL2Nodes() {
+		L2ProcessInfo[] l2RuntimeInfoNodes = null;
+
+		try {
+			if(initConnection()) {
+				L2Info[] l2Nodes = l2MBean.getL2Info();
+				l2RuntimeInfoNodes = new L2ProcessInfo[l2Nodes.length];
+				for (int i = 0; i < l2Nodes.length; i++) {
+					L2ProcessInfo l2RuntimeInfo = new L2ProcessInfo();
+					l2RuntimeInfo.setNodeName(l2Nodes[i].name());
+					l2RuntimeInfo.setHostName(l2Nodes[i].safeGetCanonicalHostName());
+					l2RuntimeInfo.setHostAddress(l2Nodes[i].safeGetHostAddress());
+					l2RuntimeInfo.setHostPortJmxConnect(l2Nodes[i].jmxPort());
+
+					l2RuntimeInfoNodes[i] = l2RuntimeInfo;
+				}
+			}
+		} catch (Exception e) {
+			handleJMXException("Failed to get l2 runtime info", e);
+		}
+
+		return l2RuntimeInfoNodes;
+	}
+
+	public L2ProcessInfo getL2ProcessInfo() {
+		L2ProcessInfo l2RuntimeInfo = null;
 
 		try {
 			if(initConnection()) {
@@ -221,7 +357,7 @@ public class TCL2JMXClient extends TCJMXClient {
 				}
 
 				if(null != nodeFound){
-					l2RuntimeInfo = new L2RuntimeInfo();
+					l2RuntimeInfo = new L2ProcessInfo();
 					l2RuntimeInfo.setNodeName(nodeFound.name());
 					l2RuntimeInfo.setHostName(nodeFound.safeGetCanonicalHostName());
 					l2RuntimeInfo.setHostAddress(nodeFound.safeGetHostAddress());
@@ -259,7 +395,6 @@ public class TCL2JMXClient extends TCJMXClient {
 
 				l2RuntimeStatus.setUsedHeap(l2MBean.getUsedMemory());
 				l2RuntimeStatus.setMaxHeap(l2MBean.getMaxMemory());
-
 			}
 		} catch (Exception e) {
 			handleJMXException("Failed to get l2 runtime status", e);
@@ -268,32 +403,33 @@ public class TCL2JMXClient extends TCJMXClient {
 		return l2RuntimeStatus;
 	}
 
-	public L2OffheapStats getL2OffheapStats() {
-		L2OffheapStats offHeapStats = null;
+	public L2DataStats getL2DataStats() {
+		L2DataStats dataStats = null;
 		try {
 			if(initConnection()) {
-				offHeapStats = new L2OffheapStats();
-				offHeapStats.setOffheapMapAllocatedMemory(dsoMbean.getOffheapMapAllocatedMemory());
-				offHeapStats.setOffheapMaxDataSize(dsoMbean.getOffheapMaxDataSize());
-				offHeapStats.setOffheapObjectAllocatedMemory(dsoMbean.getOffheapObjectAllocatedMemory());
-				offHeapStats.setOffheapTotalAllocatedSize(dsoMbean.getOffheapTotalAllocatedSize());
+				dataStats = new L2DataStats();
+				dataStats.setCachedObjectCount(dsoMbean.getCachedObjectCount());
+				dataStats.setLiveObjectCount(dsoMbean.getLiveObjectCount());
+				dataStats.setOffheapObjectCachedCount(dsoMbean.getOffheapObjectCachedCount());
+				dataStats.setOffheapMapAllocatedMemory(dsoMbean.getOffheapMapAllocatedMemory());
+				dataStats.setOffheapMaxDataSize(dsoMbean.getOffheapMaxDataSize());
+				dataStats.setOffheapObjectAllocatedMemory(dsoMbean.getOffheapObjectAllocatedMemory());
+				dataStats.setOffheapTotalAllocatedSize(dsoMbean.getOffheapTotalAllocatedSize());
 			}
 		} catch (Exception e) {
 			handleJMXException("Failed to get l2 offheap statistics", e);
 		}
 
-		return offHeapStats;
+		return dataStats;
 	}
 
-	public L2UsageStats getL2UsageStats() {
-		L2UsageStats l2UsageStats = null;
+	public L2TransactionsStats getL2TransactionsStats() {
+		L2TransactionsStats l2UsageStats = null;
 		try {
 			if(initConnection()) {
-				l2UsageStats = new L2UsageStats();
-				l2UsageStats.setCachedObjectCount(dsoMbean.getCachedObjectCount());
+				l2UsageStats = new L2TransactionsStats();
 				l2UsageStats.setGlobalLockRecallRate(dsoMbean.getGlobalLockRecallRate());
 				l2UsageStats.setL2DiskFaultRate(dsoMbean.getL2DiskFaultRate());
-				l2UsageStats.setLiveObjectCount(dsoMbean.getLiveObjectCount());
 				l2UsageStats.setOffHeapFaultRate(dsoMbean.getOffHeapFaultRate());
 				l2UsageStats.setOffHeapFlushRate(dsoMbean.getOffHeapFlushRate());
 				l2UsageStats.setOnHeapFaultRate(dsoMbean.getOnHeapFaultRate());
@@ -322,7 +458,7 @@ public class TCL2JMXClient extends TCJMXClient {
 						l1UsageStats.setObjectFlushRate(dsoClientMBean.getObjectFlushRate());
 						l1UsageStats.setPendingTransactionsCount(dsoClientMBean.getPendingTransactionsCount());
 						l1UsageStats.setTransactionRate(dsoClientMBean.getTransactionRate());
-						
+
 						l1UsageStatList.add(l1UsageStats);
 					}
 				}
@@ -332,68 +468,6 @@ public class TCL2JMXClient extends TCJMXClient {
 		}
 
 		return l1UsageStatList;
-	}
-
-	public Map<String, CacheManagerInfo> getCacheManagerInfo() {
-		Map<String, CacheManagerInfo> cacheManagersMap = null;
-
-		try {
-			if(initConnection()) {
-				cacheManagersMap = new HashMap<String, CacheManagerInfo>();
-
-				String cacheManagerMbeanQuery = getSampledCacheManagerMBeanQuery();
-				Set<ObjectName> cacheManagerNames = mbs.queryNames(ObjectName.getInstance(cacheManagerMbeanQuery), null);
-
-				//String forcedClientID = null;
-				for(ObjectName cmMBeanObjName : cacheManagerNames){
-					try {
-						if (cmMBeanObjName == null) {
-							System.out.println("Null object name for cache manager");
-							break;
-						}
-
-						SampledCacheManagerMBean cmMBean = null;
-						try {
-							cmMBean = (SampledCacheManagerMBean) MBeanServerInvocationProxy.newProxyInstance(
-									mbs, cmMBeanObjName, SampledCacheManagerMBean.class, false);
-						} catch (Exception e) {
-							handleJMXException("Error trying to get CacheManager MBeans", e);
-							break;
-						}
-
-						String cmMBeanID = cmMBeanObjName.getKeyProperty("node");
-						String cmName = cmMBean.getName();
-						String[] cacheNames = cmMBean.getCacheNames();
-
-						CacheManagerInfo cmInfo = cacheManagersMap.get(cmName);
-						if (cmInfo == null) {
-							// newly found cachemanager
-							cmInfo = new CacheManagerInfo(cmMBeanID, cmName);
-							cmInfo.addCaches(cacheNames);
-
-							// add it to the map of CacheManagerInfo objects
-							cacheManagersMap.put(cmName, cmInfo);
-						} else {
-							// repeat cachemanager due to additional clients, just add the client						
-							cmInfo.addClientMbeanID(cmMBeanID);
-							cmInfo.addCaches(cacheNames);
-
-							//check if the current CM instance has more caches - if so, replace the one in the cmInfo.
-							// this covers the case where certain clients may not define / use all the caches in a given cache manager
-							if (cacheNames.length > cmInfo.getCaches().length) {
-								cmInfo.replaceClientMbeanID(cmMBeanID);
-							}
-						}
-					} catch (Exception e) {
-						log.error("Error during CacheManager " + cmMBeanObjName + " bean crawl", e);
-					}
-				}
-			}
-		} catch (Exception e) {
-			handleJMXException("Failed to get start time", e);
-		}
-
-		return cacheManagersMap;
 	}
 
 	/*	public void enableCacheStatistics(final CacheManagerInfo cmInfo, final String clientsIDPattern) throws MalformedObjectNameException, NullPointerException, IOException 
@@ -430,8 +504,5 @@ public class TCL2JMXClient extends TCJMXClient {
 		}
 	}*/
 
-	public String getClientMBeanName(String cacheManagerName, String cacheName, String clientID) {
-		return "net.sf.ehcache:SampledCacheManager="+cacheManagerName+",name="+cacheName+",type=SampledCache,clients=Clients,node="+clientID;
-		//String clientObjectNames = "net.sf.ehcache:SampledCacheManager="+cmInfo.getName()+",name="+cmInfo.getCaches()[i]+",type=SampledCache,clients=Clients,node=*";
-	}
+
 }

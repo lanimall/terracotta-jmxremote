@@ -1,9 +1,7 @@
 package org.terracotta.utils.jmxclient.beans;
 
-public class L2UsageStats {
+public class L2TransactionsStats {
 	private long transactionRate;
-	private int liveObjectCount;
-	private int cachedObjectCount;
 	private long onHeapFaultRate;
 	private long onHeapFlushRate;
 	private long offHeapFaultRate;
@@ -11,7 +9,7 @@ public class L2UsageStats {
 	private long l2DiskFaultRate;
 	private long globalLockRecallRate;
 	
-	public L2UsageStats() {
+	public L2TransactionsStats() {
 		super();
 	}
 
@@ -22,23 +20,7 @@ public class L2UsageStats {
 	public void setTransactionRate(long transactionRate) {
 		this.transactionRate = transactionRate;
 	}
-
-	public int getLiveObjectCount() {
-		return liveObjectCount;
-	}
-
-	public void setLiveObjectCount(int liveObjectCount) {
-		this.liveObjectCount = liveObjectCount;
-	}
-
-	public int getCachedObjectCount() {
-		return cachedObjectCount;
-	}
-
-	public void setCachedObjectCount(int cachedObjectCount) {
-		this.cachedObjectCount = cachedObjectCount;
-	}
-
+	
 	public long getOnHeapFaultRate() {
 		return onHeapFaultRate;
 	}

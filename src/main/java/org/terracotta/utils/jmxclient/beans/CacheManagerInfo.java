@@ -3,21 +3,22 @@ package org.terracotta.utils.jmxclient.beans;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Set;
 
 public class CacheManagerInfo {
-	private final String mbeanName;
-	private final String mbeanID;
+	private final String cmName;
+	private final String cmClientID;
 	
 	private ArrayList<String> clientMbeansIDs = new ArrayList<String>();
 	private String masterClientMbeanID = new String(); // this is used to keep track of one client who has all of the caches defined/connected.
-	private HashSet<String> caches;
+	private Set<String> cacheNames = new HashSet<String>();
 	
-	public CacheManagerInfo(String cmMBeanID, String cmMBeanName){
-		this.mbeanID = cmMBeanID;
-		this.mbeanName = cmMBeanName;
+	public CacheManagerInfo(String cmClientID, String cmName){
+		this.cmClientID = cmClientID;
+		this.cmName = cmName;
 		
-		this.clientMbeansIDs.add(cmMBeanID);
-		this.masterClientMbeanID = cmMBeanID;
+		this.clientMbeansIDs.add(cmClientID);
+		this.masterClientMbeanID = cmClientID;
 	}
 	
 	public ArrayList<String> getClientMbeansIDs() {
@@ -28,12 +29,12 @@ public class CacheManagerInfo {
 		return masterClientMbeanID;
 	}
 
-	public String getMbeanName() {
-		return mbeanName;
+	public String getCmName() {
+		return cmName;
 	}
 
-	public String getMbeanID() {
-		return mbeanID;
+	public String getCmClientID() {
+		return cmClientID;
 	}
 
 	public void addClientMbeanID(String clientMbeanID){
@@ -42,13 +43,13 @@ public class CacheManagerInfo {
 	
 	public void addCaches(String[] newCaches){
 		HashSet<String> toAdd = new HashSet<String>(Arrays.asList(newCaches));
-		this.caches.addAll(toAdd);
+		cacheNames.addAll(toAdd);
 	}
 	
 	public String getCacheList() {
 		StringBuilder sb = new StringBuilder();
-		if(null != caches){
-			for(String cache : caches){
+		if(null != cacheNames){
+			for(String cache : cacheNames){
 				sb.append(cache);
 			}
 		}
@@ -56,10 +57,10 @@ public class CacheManagerInfo {
 	}
 	
 	public String[] getCaches() {
-		return (String[])this.caches.toArray(new String[caches.size()]);
+		return (String[])cacheNames.toArray(new String[cacheNames.size()]);
 	}
 	
-	public void replaceClientMbeanID(String newMasterClientMbeanID) {
+	public void replaceMasterClientMbeanID(String newMasterClientMbeanID) {
 		masterClientMbeanID = newMasterClientMbeanID;
 	}
 }
