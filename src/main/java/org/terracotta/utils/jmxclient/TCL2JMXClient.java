@@ -52,7 +52,7 @@ public class TCL2JMXClient extends TCJMXClient {
 	}
 
 	protected final void initConnectionInternal() throws Exception {
-		System.out.println("Establishing a new JMX Connection to " + getHostPort());
+		log.info("Establishing a new JMX Connection to " + getHostPort());
 		if(useRMI){ //using normal RMI
 			log.info("\nCreate an RMI connector client and connect it to the RMI connector server");
 
