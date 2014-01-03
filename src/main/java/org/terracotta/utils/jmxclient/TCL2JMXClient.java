@@ -24,6 +24,7 @@ import org.terracotta.utils.jmxclient.beans.L2DataStats;
 import org.terracotta.utils.jmxclient.beans.L2ProcessInfo;
 import org.terracotta.utils.jmxclient.beans.L2RuntimeStatus;
 import org.terracotta.utils.jmxclient.beans.L2TransactionsStats;
+import org.terracotta.utils.jmxclient.utils.L2RuntimeState;
 
 import com.tc.admin.common.MBeanServerInvocationProxy;
 import com.tc.cli.CommandLineBuilder;
@@ -71,27 +72,23 @@ public class TCL2JMXClient extends TCJMXClient {
 
 			JMXServiceURL serviceUrl = new JMXServiceURL(url);
 			jmxConnector = JMXConnectorFactory.connect(serviceUrl, env);
-			mbs = jmxConnector.getMBeanServerConnection();
+			if(null != jmxConnector)
+				mbs = jmxConnector.getMBeanServerConnection();
 		} else {
 			log.info("\nCreate an JMX connector client");
 			jmxConnector = CommandLineBuilder.getJMXConnector(username, password, host, port);
-			mbs = jmxConnector.getMBeanServerConnection();
+
+			if(null != jmxConnector)
+				mbs = jmxConnector.getMBeanServerConnection();
 		}
+		
+		if(null != mbs){
+			// get server l2 info mbean:
+			l2MBean = MBeanServerInvocationProxy.newMBeanProxy(mbs, L2MBeanNames.TC_SERVER_INFO, TCServerInfoMBean.class, false);
 
-		// get server l2 info mbean:
-		l2MBean = MBeanServerInvocationProxy.newMBeanProxy(mbs, L2MBeanNames.TC_SERVER_INFO, TCServerInfoMBean.class, false);
-
-		//dsoMbean - Needed to get client mbeans
-		dsoMbean = (DSOMBean) MBeanServerInvocationProxy.newMBeanProxy(mbs, L2MBeanNames.DSO, DSOMBean.class, false);
-
-		/* TODO - This is the notification piece which needs to be completed
-		// register the operator events listener:
-		ObjectName operatorEventsBean = new ObjectName("org.terracotta:type=TC Operator Events,name=Terracotta Operator Events Bean");
-		System.out.println("Add notification listener...");
-
-		mbs.addNotificationListener(operatorEventsBean, listener, null, null);
-		System.out.println("Started Listener for Operator Events on: " + hostname + ":" + jmxPort);
-		 */
+			//dsoMbean - Needed to get client mbeans
+			dsoMbean = (DSOMBean) MBeanServerInvocationProxy.newMBeanProxy(mbs, L2MBeanNames.DSO, DSOMBean.class, false);
+		}
 	}
 
 	public boolean isNodeActive() {
@@ -131,7 +128,7 @@ public class TCL2JMXClient extends TCJMXClient {
 		ArrayList<L2ClientID> clientIDs = null;
 		try {
 			if (initConnection()) {
-				if(!l2MBean.isActive())
+				if(null != l2MBean && !l2MBean.isActive())
 					throw new JMXClientException("Node must be active to provide accurate client count.");
 
 				ObjectName[] clientsMBeans = dsoMbean.getClients();
@@ -164,7 +161,7 @@ public class TCL2JMXClient extends TCJMXClient {
 		ArrayList<L2ClientRuntimeInfo> clientsInfoArray = null;
 		try {
 			if (initConnection()) {
-				if(!l2MBean.isActive())
+				if(null != l2MBean && !l2MBean.isActive())
 					throw new JMXClientException("Node must be active to provide accurate client count.");
 
 				ObjectName[] clientsMBeans = dsoMbean.getClients();
@@ -380,19 +377,18 @@ public class TCL2JMXClient extends TCJMXClient {
 		try {
 			if(initConnection()) {
 				l2RuntimeStatus = new L2RuntimeStatus();
-				l2RuntimeStatus.setState(l2MBean.getState());
 				l2RuntimeStatus.setHealth(l2MBean.getHealthStatus());
 				if(l2MBean.isActive()){
-					l2RuntimeStatus.setRole("ACTIVE");
-				} else {
-					if(l2MBean.isPassiveUninitialized())
-						l2RuntimeStatus.setRole("PASSIVE_UNINITIALIZED");
-					else if (l2MBean.isPassiveStandby())
-						l2RuntimeStatus.setRole("PASSIVE_STANDBY");
-					else //must be in error
-						l2RuntimeStatus.setRole("ERROR");
-				}
-
+		    		l2RuntimeStatus.setState(L2RuntimeState.ACTIVE);
+		    	} else {
+		    		if(l2MBean.isPassiveUninitialized())
+		    			l2RuntimeStatus.setState(L2RuntimeState.PASSIVE_UNINITIALIZED);
+		    		else if (l2MBean.isPassiveStandby())
+		    			l2RuntimeStatus.setState(L2RuntimeState.PASSIVE_STANDBY);
+		    		else //must be in error
+		    			l2RuntimeStatus.setState(L2RuntimeState.ERROR);
+		    	}
+				
 				l2RuntimeStatus.setUsedHeap(l2MBean.getUsedMemory());
 				l2RuntimeStatus.setMaxHeap(l2MBean.getMaxMemory());
 			}

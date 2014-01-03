@@ -117,7 +117,7 @@ public abstract class TCJMXClient {
 	}
 
 	//DSOClientMBean
-	public <T> T getMBean(ObjectName objName, Class<T> clazz) throws MalformedObjectNameException, NullPointerException, IOException {
+	public <T> T getMBean(ObjectName objName, Class<T> clazz) {
 		T mBeanProxy = null;
 		try {
 			if (initConnection()) {
@@ -134,7 +134,7 @@ public abstract class TCJMXClient {
 		return true;
 	}
 	
-	public SampledCacheManagerMBean getCacheManagerMBean(final String cacheManagerName, final String clientID) throws MalformedObjectNameException, NullPointerException, IOException {
+	public SampledCacheManagerMBean getCacheManagerMBean(final String cacheManagerName, final String clientID) {
 		SampledCacheManagerMBean cacheManagerMBean = null;
 		try {
 			if (initConnection()) {

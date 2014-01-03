@@ -1,9 +1,10 @@
 package org.terracotta.utils.jmxclient.beans;
 
+import org.terracotta.utils.jmxclient.utils.L2RuntimeState;
+
 
 public class L2RuntimeStatus {
-	private String role;
-	private String state;
+	private L2RuntimeState state;
 	private String health;
 	private long usedHeap;
 	private long maxHeap;
@@ -11,20 +12,12 @@ public class L2RuntimeStatus {
 	public L2RuntimeStatus() {
 		super();
 	}
-	
-	public String getRole() {
-		return role;
-	}
 
-	public void setRole(String role) {
-		this.role = role;
-	}
-
-	public String getState() {
+	public L2RuntimeState getState() {
 		return state;
 	}
 
-	public void setState(String state) {
+	public void setState(L2RuntimeState state) {
 		this.state = state;
 	}
 

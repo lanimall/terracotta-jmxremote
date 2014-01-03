@@ -33,12 +33,14 @@
 			<groupId>net.sf.ehcache</groupId>
 			<artifactId>ehcache-core-ee</artifactId>
 			<version>${ehcache-core-ee.version}</version>
+			<scope>provided</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>net.sf.ehcache</groupId>
 			<artifactId>ehcache-terracotta-ee</artifactId>
 			<version>${ehcache-terracotta-ee.version}</version>
+			<scope>provided</scope>
 		</dependency>
 
 		<!-- SLF4J -->
@@ -46,12 +48,14 @@
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
 			<version>${slf4j.version}</version>
+			<scope>provided</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
 			<version>${slf4j.version}</version>
+			<scope>provided</scope>
 		</dependency>
 
 		<dependency>
