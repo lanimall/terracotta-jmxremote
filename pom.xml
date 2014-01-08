@@ -2,18 +2,19 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.terracotta.utils</groupId>
-	<artifactId>terracotta-jmxremote-3.6-runtime</artifactId>
+	<artifactId>terracotta-jmxremote-4.0-runtime</artifactId>
 	<version>1.0.0</version>
-	<name>Terracotta 3.7.x JMX Remote Library</name>
-	<description>JMX Remote Library for Terracotta 3.7.x</description>
+	<name>Terracotta 4.0.x JMX Client SDK</name>
+	<description>JMX Client SDK for Terracotta 4.0.x</description>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<junit.version>4.6</junit.version>
-		<ehcache-core-ee.version>2.6.7</ehcache-core-ee.version>
-		<ehcache-terracotta-ee.version>2.6.7</ehcache-terracotta-ee.version>
-		<slf4j.version>1.6.1</slf4j.version>
+		<junit.version>4.11</junit.version>
+		<ehcache-ee.version>2.7.5</ehcache-ee.version>
+		<terracotta-toolkit.version>4.0.5</terracotta-toolkit.version>
+		<slf4j.version>1.6.6</slf4j.version>
 	</properties>
+
 
 	<developers>
 		<developer>
@@ -28,18 +29,18 @@
 	</developers>
 
 	<dependencies>
-		<!-- EhCache -->
+		<!-- EhCache / Terracotta -->
 		<dependency>
 			<groupId>net.sf.ehcache</groupId>
-			<artifactId>ehcache-core-ee</artifactId>
-			<version>${ehcache-core-ee.version}</version>
+			<artifactId>ehcache-ee</artifactId>
+			<version>${ehcache-ee.version}</version>
 			<scope>provided</scope>
 		</dependency>
 
 		<dependency>
-			<groupId>net.sf.ehcache</groupId>
-			<artifactId>ehcache-terracotta-ee</artifactId>
-			<version>${ehcache-terracotta-ee.version}</version>
+			<groupId>org.terracotta</groupId>
+			<artifactId>terracotta-toolkit-runtime-ee</artifactId>
+			<version>${terracotta-toolkit.version}</version>
 			<scope>provided</scope>
 		</dependency>
 
