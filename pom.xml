@@ -2,7 +2,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.terracotta.utils</groupId>
-	<artifactId>terracotta-jmxremote-4.0-runtime</artifactId>
+	<artifactId>terracotta-4.0-jmx-sdk</artifactId>
 	<version>1.0.0</version>
 	<name>Terracotta 4.0.x JMX Client SDK</name>
 	<description>JMX Client SDK for Terracotta 4.0.x</description>
