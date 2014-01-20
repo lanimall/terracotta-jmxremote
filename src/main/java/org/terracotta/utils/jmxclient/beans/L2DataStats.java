@@ -1,6 +1,8 @@
 package org.terracotta.utils.jmxclient.beans;
 
 public class L2DataStats {
+	private long usedHeap;
+	private long maxHeap;
 	private long offheapMaxDataSize;
 	private long offheapTotalAllocatedSize;
 	private long offheapMapAllocatedMemory;
@@ -11,6 +13,22 @@ public class L2DataStats {
 	
 	public L2DataStats() {
 		super();
+	}
+
+	public long getUsedHeap() {
+		return usedHeap;
+	}
+
+	public void setUsedHeap(long usedHeap) {
+		this.usedHeap = usedHeap;
+	}
+
+	public long getMaxHeap() {
+		return maxHeap;
+	}
+
+	public void setMaxHeap(long maxHeap) {
+		this.maxHeap = maxHeap;
 	}
 
 	public int getLiveObjectCount() {
