@@ -20,6 +20,7 @@ public class CacheStats {
 	private long cachePutRate;
 	private long evictionRate;
 	private long expirationRate;
+	private long removeRate;
 	
 	public CacheStats(String cacheName) {
 		super();
@@ -172,5 +173,13 @@ public class CacheStats {
 
 	public void setExpirationRate(long expirationRate) {
 		this.expirationRate = expirationRate;
+	}
+
+	public long getRemoveRate() {
+		return removeRate;
+	}
+
+	public void setRemoveRate(long removeRate) {
+		this.removeRate = removeRate;
 	}
 }

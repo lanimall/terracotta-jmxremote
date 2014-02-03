@@ -38,6 +38,8 @@ import com.tc.stats.api.DSOMBean;
 public class TCL2JMXClient extends TCJMXClient {
 	private static Logger log = LoggerFactory.getLogger(TCL2JMXClient.class);
 
+	public final boolean DEFAULT_CACHESTATS_GETFROMSAMPLING = Boolean.parseBoolean(System.getProperty("org.terracotta.utils.jmxclient.ehcache.samplingvalues", "false"));
+	
 	private final boolean useRMI;
 
 	private TCServerInfoMBean l2MBean;
@@ -262,6 +264,10 @@ public class TCL2JMXClient extends TCJMXClient {
 	}
 
 	private CacheStats getCacheStatsFromMBean(SampledCacheMBean cacheMbean) {
+		return getCacheStatsFromMBean(cacheMbean, DEFAULT_CACHESTATS_GETFROMSAMPLING);
+	}
+	
+	private CacheStats getCacheStatsFromMBean(SampledCacheMBean cacheMbean, boolean mostRecentSample) {
 		CacheStats cacheStats = null;
 		try {
 			if (initConnection()) {
@@ -277,22 +283,23 @@ public class TCL2JMXClient extends TCJMXClient {
 					cacheStats.setLocalDiskSize(cacheMbean.getLocalDiskSize());
 
 					//hits
-					cacheStats.setCacheHitRatio(cacheMbean.getCacheHitRatio());
-					cacheStats.setCacheHitRate(cacheMbean.getCacheHitRate());
-					cacheStats.setOnHeapHitRate(cacheMbean.getCacheInMemoryHitRate());
-					cacheStats.setOffHeapHitRate(cacheMbean.getCacheOffHeapHitRate());
-					cacheStats.setOnDiskHitRate(cacheMbean.getCacheOnDiskHitRate());
+					cacheStats.setCacheHitRatio((mostRecentSample)?cacheMbean.getCacheHitRatioMostRecentSample():cacheMbean.getCacheHitRatio());
+					cacheStats.setCacheHitRate((mostRecentSample)?cacheMbean.getCacheHitMostRecentSample():cacheMbean.getCacheHitRate());
+					cacheStats.setOnHeapHitRate((mostRecentSample)?cacheMbean.getCacheHitInMemoryMostRecentSample():cacheMbean.getCacheInMemoryHitRate());
+					cacheStats.setOffHeapHitRate((mostRecentSample)?cacheMbean.getCacheHitOffHeapMostRecentSample():cacheMbean.getCacheOffHeapHitRate());
+					cacheStats.setOnDiskHitRate((mostRecentSample)?cacheMbean.getCacheHitOnDiskMostRecentSample():cacheMbean.getCacheOnDiskHitRate());
 
 					//misses
-					cacheStats.setCacheMissRate(cacheMbean.getCacheMissRate());
-					cacheStats.setOnHeapMissRate(cacheMbean.getCacheInMemoryMissRate());
-					cacheStats.setOffHeapMissRate(cacheMbean.getCacheOffHeapMissRate());
-					cacheStats.setOnDiskMissRate(cacheMbean.getCacheOnDiskMissRate());
+					cacheStats.setCacheMissRate((mostRecentSample)?cacheMbean.getCacheMissMostRecentSample():cacheMbean.getCacheMissRate());
+					cacheStats.setOnHeapMissRate((mostRecentSample)?cacheMbean.getCacheMissInMemoryMostRecentSample():cacheMbean.getCacheInMemoryMissRate());
+					cacheStats.setOffHeapMissRate((mostRecentSample)?cacheMbean.getCacheMissOffHeapMostRecentSample():cacheMbean.getCacheOffHeapMissRate());
+					cacheStats.setOnDiskMissRate((mostRecentSample)?cacheMbean.getCacheMissOnDiskMostRecentSample():cacheMbean.getCacheOnDiskMissRate());
 
 					//evictions/updates
-					cacheStats.setCachePutRate(cacheMbean.getCachePutRate());
-					cacheStats.setEvictionRate(cacheMbean.getCacheEvictionRate());
-					cacheStats.setExpirationRate(cacheMbean.getCacheExpirationRate());
+					cacheStats.setCachePutRate((mostRecentSample)?cacheMbean.getCacheElementPutMostRecentSample():cacheMbean.getCachePutRate());
+					cacheStats.setEvictionRate((mostRecentSample)?cacheMbean.getCacheElementEvictedMostRecentSample():cacheMbean.getCacheEvictionRate());
+					cacheStats.setExpirationRate((mostRecentSample)?cacheMbean.getCacheElementExpiredMostRecentSample():cacheMbean.getCacheExpirationRate());
+					cacheStats.setExpirationRate((mostRecentSample)?cacheMbean.getCacheElementRemovedMostRecentSample():cacheMbean.getCacheRemoveRate());
 				}
 			} 
 		} catch (Exception e) {

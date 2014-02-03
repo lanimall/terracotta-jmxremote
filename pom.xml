@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.terracotta.utils</groupId>
 	<artifactId>terracotta-3.7-jmx-sdk</artifactId>
-	<version>1.0.0</version>
+	<version>1.0.1</version>
 	<name>Terracotta 3.7.x JMX Client SDK</name>
 	<description>JMX Client SDK for Terracotta 3.7.x</description>
 
