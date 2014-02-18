@@ -1,11 +1,13 @@
 package org.terracotta.utils.jmxclient;
 
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
@@ -38,8 +40,6 @@ import com.tc.stats.api.DSOMBean;
 public class TCL2JMXClient extends TCJMXClient {
 	private static Logger log = LoggerFactory.getLogger(TCL2JMXClient.class);
 
-	public final boolean DEFAULT_CACHESTATS_GETFROMSAMPLING = Boolean.parseBoolean(System.getProperty("org.terracotta.utils.jmxclient.ehcache.samplingvalues", "false"));
-	
 	private final boolean useRMI;
 
 	private TCServerInfoMBean l2MBean;
@@ -55,6 +55,10 @@ public class TCL2JMXClient extends TCJMXClient {
 	}
 
 	protected final void initConnectionInternal() throws Exception {
+		if(log.isDebugEnabled()){
+			log.debug(String.format("Entering initConnectionInternal()"));
+		}
+		
 		log.info("Establishing a new JMX Connection to " + getHostPort());
 		if(useRMI){ //using normal RMI
 			log.info("\nCreate an RMI connector client and connect it to the RMI connector server");
@@ -96,12 +100,19 @@ public class TCL2JMXClient extends TCJMXClient {
 	public boolean isNodeActive() {
 		boolean active = false;
 		try {
+			if(log.isDebugEnabled()){
+				log.debug(String.format("Entering isNodeActive()"));
+			}
+			
 			if (initConnection()) {
 				active = l2MBean.isActive();
 			} 
 		} catch (Exception e) {
-			handleJMXException("Failed to get client counts", e);
+			handleJMXException("Failed to check if client is active", e);
 		}
+
+		if(log.isDebugEnabled())
+			log.debug(String.format("isNodeActive()=%s", new Boolean(active).toString()));
 
 		return active;
 	}
@@ -113,6 +124,10 @@ public class TCL2JMXClient extends TCJMXClient {
 	public int getClientCount() {
 		int clientCount = -1;
 		try {
+			if(log.isDebugEnabled()){
+				log.debug(String.format("Entering getClientCount()"));
+			}
+			
 			if (initConnection()) {
 				if(!l2MBean.isActive())
 					throw new JMXClientException("Node must be active to provide accurate client count.");
@@ -123,12 +138,19 @@ public class TCL2JMXClient extends TCJMXClient {
 			handleJMXException("Failed to get client counts", e);
 		}
 
+		if(log.isDebugEnabled())
+			log.debug(String.format("getClientCount()=%s", new Integer(clientCount).toString()));
+
 		return clientCount;
 	}
 
 	public L2ClientID[] getClientIDs(){
 		ArrayList<L2ClientID> clientIDs = null;
 		try {
+			if(log.isDebugEnabled()){
+				log.debug(String.format("Entering getClientIDs()"));
+			}
+			
 			if (initConnection()) {
 				if(null != l2MBean && !l2MBean.isActive())
 					throw new JMXClientException("Node must be active to provide accurate client count.");
@@ -153,15 +175,28 @@ public class TCL2JMXClient extends TCJMXClient {
 				}
 			} 
 		} catch (Exception e) {
-			handleJMXException("Failed to get client counts", e);
+			handleJMXException("Failed to get client ids", e);
 		}
 
+		if(log.isDebugEnabled()){
+			StringWriter debug = new StringWriter();
+			if(null != clientIDs){
+				for(L2ClientID c : clientIDs){
+					debug.append(c.toString()).append("~~");
+				}
+			}
+			log.debug(String.format("getClientIDs()=%s", debug));
+		}
 		return (null != clientIDs)?clientIDs.toArray(new L2ClientID[clientIDs.size()]):null;
 	}
 
 	public L2ClientRuntimeInfo[] getClients() {
 		ArrayList<L2ClientRuntimeInfo> clientsInfoArray = null;
 		try {
+			if(log.isDebugEnabled()){
+				log.debug(String.format("Entering getClients()"));
+			}
+			
 			if (initConnection()) {
 				if(null != l2MBean && !l2MBean.isActive())
 					throw new JMXClientException("Node must be active to provide accurate client count.");
@@ -198,78 +233,112 @@ public class TCL2JMXClient extends TCJMXClient {
 				}
 			} 
 		} catch (Exception e) {
-			handleJMXException("Failed to get client counts", e);
+			handleJMXException("Failed to get client runtime stats", e);
 		}
 
+		if(log.isDebugEnabled()){
+			StringWriter debug = new StringWriter();
+			if(null != clientsInfoArray){
+				for(L2ClientRuntimeInfo c : clientsInfoArray){
+					debug.append(c.toString()).append("~~");
+				}
+			}
+			log.debug(String.format("getClients()=%s", debug));
+		}
+		
 		return (null != clientsInfoArray)?clientsInfoArray.toArray(new L2ClientRuntimeInfo[clientsInfoArray.size()]):null;
 	}
 
 	public void enableCacheStats(final String cacheManagerName, final String cacheName, final String clientID) {
 		try {
+			if(log.isDebugEnabled()){
+				log.debug(String.format("Entering enableCacheStats(%s, %s, %s)", cacheManagerName, cacheName, clientID));
+			}
+			
 			if (initConnection()) {
 				SampledCacheMBean cacheMbean = getCacheMBean(cacheManagerName, cacheName, clientID);
 				cacheMbean.enableStatistics();
 				cacheMbean.enableSampledStatistics();
 			} 
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 health ", e);
+			handleJMXException("Failed to enable cache stats", e);
 		}
 	}
 
 	public void disableCacheStats(final String cacheManagerName, final String cacheName, final String clientID) {
 		try {
+			if(log.isDebugEnabled()){
+				log.debug(String.format("Entering disableCacheStats(%s, %s, %s)", cacheManagerName, cacheName, clientID));
+			}
+			
 			if (initConnection()) {
 				SampledCacheMBean cacheMbean = getCacheMBean(cacheManagerName, cacheName, clientID);
 				cacheMbean.disableSampledStatistics();
 				cacheMbean.disableStatistics();
 			} 
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 health ", e);
+			handleJMXException("Failed to disable cache stats", e);
 		}
 	}
 
 	public CacheStats enableStatisticsAndGetCacheStats(final String cacheManagerName, final String cacheName, final String clientID) {
+		return enableStatisticsAndGetCacheStats(cacheManagerName, cacheName, clientID, false);
+	}
+
+	public CacheStats enableStatisticsAndGetCacheStats(final String cacheManagerName, final String cacheName, final String clientID, final boolean rawCountsOnly) {
 		CacheStats cacheStats = null;
 		try {
+			if(log.isDebugEnabled()){
+				log.debug(String.format("Entering enableStatisticsAndGetCacheStats(%s, %s, %s)", cacheManagerName, cacheName, clientID));
+			}
+			
 			if (initConnection()) {
 				SampledCacheMBean cacheMbean = getCacheMBean(cacheManagerName, cacheName, clientID);
 				if(!cacheMbean.isStatisticsEnabled()){
 					cacheMbean.enableStatistics();
 					cacheMbean.enableSampledStatistics();
 				}
-				cacheStats = getCacheStatsFromMBean(cacheMbean);
+				cacheStats = getCacheStatsFromMBean(cacheMbean, rawCountsOnly);
 			}
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 health ", e);
+			handleJMXException("Failed to enable stats and get cache stats", e);
 		}
 		return cacheStats;
 	}
 
 	public CacheStats getCacheStatsAndDisableStatistics(final String cacheManagerName, final String cacheName, final String clientID) {
+		return getCacheStatsAndDisableStatistics(cacheManagerName, cacheName, clientID, false);
+	}
+
+	public CacheStats getCacheStatsAndDisableStatistics(final String cacheManagerName, final String cacheName, final String clientID, final boolean rawCountsOnly) {
 		CacheStats cacheStats = null;
 		try {
+			if(log.isDebugEnabled()){
+				log.debug(String.format("Entering getCacheStatsAndDisableStatistics(%s, %s, %s)", cacheManagerName, cacheName, clientID));
+			}
+			
 			if (initConnection()) {
 				SampledCacheMBean cacheMbean = getCacheMBean(cacheManagerName, cacheName, clientID);
-				cacheStats = getCacheStatsFromMBean(cacheMbean);
-				
+				cacheStats = getCacheStatsFromMBean(cacheMbean, rawCountsOnly);
+
 				if(cacheMbean.isStatisticsEnabled()){
 					cacheMbean.disableSampledStatistics();
 					cacheMbean.disableStatistics();
 				}
 			}
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 health ", e);
+			handleJMXException("Failed to get cache stats and disable stats", e);
 		}
 		return cacheStats;
 	}
 
-	private CacheStats getCacheStatsFromMBean(SampledCacheMBean cacheMbean) {
-		return getCacheStatsFromMBean(cacheMbean, DEFAULT_CACHESTATS_GETFROMSAMPLING);
-	}
-	
-	private CacheStats getCacheStatsFromMBean(SampledCacheMBean cacheMbean, boolean mostRecentSample) {
+	private CacheStats getCacheStatsFromMBean(final SampledCacheMBean cacheMbean, final boolean rawCountsOnly) {
 		CacheStats cacheStats = null;
 		try {
+			if(log.isDebugEnabled()){
+				log.debug(String.format("Entering getCacheStatsFromMBean(cacheMbean, rawCountsOnly)"));
+			}
+			
 			if (initConnection()) {
 				if(null != cacheMbean){
 					cacheStats = new CacheStats(cacheMbean.getCacheName());
@@ -282,42 +351,62 @@ public class TCL2JMXClient extends TCJMXClient {
 					cacheStats.setLocalOffHeapSize(cacheMbean.getLocalOffHeapSize());
 					cacheStats.setLocalDiskSize(cacheMbean.getLocalDiskSize());
 
-					//hits
-					cacheStats.setCacheHitRatio((mostRecentSample)?cacheMbean.getCacheHitRatioMostRecentSample():cacheMbean.getCacheHitRatio());
-					cacheStats.setCacheHitRate((mostRecentSample)?cacheMbean.getCacheHitMostRecentSample():cacheMbean.getCacheHitRate());
-					cacheStats.setOnHeapHitRate((mostRecentSample)?cacheMbean.getCacheHitInMemoryMostRecentSample():cacheMbean.getCacheInMemoryHitRate());
-					cacheStats.setOffHeapHitRate((mostRecentSample)?cacheMbean.getCacheHitOffHeapMostRecentSample():cacheMbean.getCacheOffHeapHitRate());
-					cacheStats.setOnDiskHitRate((mostRecentSample)?cacheMbean.getCacheHitOnDiskMostRecentSample():cacheMbean.getCacheOnDiskHitRate());
+					//raw counts
+					cacheStats.setCacheHitCount(cacheMbean.getCacheHitCount());
+					cacheStats.setCacheMissCount(cacheMbean.getCacheMissCount());
+					cacheStats.setEvictedCount(cacheMbean.getEvictedCount());
+					cacheStats.setExpiredCount(cacheMbean.getExpiredCount());
+					cacheStats.setPutCount(cacheMbean.getPutCount());
+					cacheStats.setRemovedCount(cacheMbean.getRemovedCount());
+					cacheStats.setInMemoryHitCount(cacheMbean.getInMemoryHitCount());
+					cacheStats.setOffHeapHitCount(cacheMbean.getOffHeapHitCount());
+					cacheStats.setOnDiskHitCount(cacheMbean.getOnDiskHitCount());
+					cacheStats.setInMemoryMissCount(cacheMbean.getInMemoryMissCount());
+					cacheStats.setOffHeapMissCount(cacheMbean.getOffHeapMissCount());
+					cacheStats.setOnDiskMissCount(cacheMbean.getOnDiskMissCount());
 
-					//misses
-					cacheStats.setCacheMissRate((mostRecentSample)?cacheMbean.getCacheMissMostRecentSample():cacheMbean.getCacheMissRate());
-					cacheStats.setOnHeapMissRate((mostRecentSample)?cacheMbean.getCacheMissInMemoryMostRecentSample():cacheMbean.getCacheInMemoryMissRate());
-					cacheStats.setOffHeapMissRate((mostRecentSample)?cacheMbean.getCacheMissOffHeapMostRecentSample():cacheMbean.getCacheOffHeapMissRate());
-					cacheStats.setOnDiskMissRate((mostRecentSample)?cacheMbean.getCacheMissOnDiskMostRecentSample():cacheMbean.getCacheOnDiskMissRate());
+					if(!rawCountsOnly){
+						//hits rates
+						cacheStats.setCacheHitRatio(cacheMbean.getCacheHitRatio());
+						cacheStats.setCacheHitRate(cacheMbean.getCacheHitRate());
+						cacheStats.setOnHeapHitRate(cacheMbean.getCacheInMemoryHitRate());
+						cacheStats.setOffHeapHitRate(cacheMbean.getCacheOffHeapHitRate());
+						cacheStats.setOnDiskHitRate(cacheMbean.getCacheOnDiskHitRate());
 
-					//evictions/updates
-					cacheStats.setCachePutRate((mostRecentSample)?cacheMbean.getCacheElementPutMostRecentSample():cacheMbean.getCachePutRate());
-					cacheStats.setEvictionRate((mostRecentSample)?cacheMbean.getCacheElementEvictedMostRecentSample():cacheMbean.getCacheEvictionRate());
-					cacheStats.setExpirationRate((mostRecentSample)?cacheMbean.getCacheElementExpiredMostRecentSample():cacheMbean.getCacheExpirationRate());
-					cacheStats.setExpirationRate((mostRecentSample)?cacheMbean.getCacheElementRemovedMostRecentSample():cacheMbean.getCacheRemoveRate());
+						//misses rates
+						cacheStats.setCacheMissRate(cacheMbean.getCacheMissRate());
+						cacheStats.setOnHeapMissRate(cacheMbean.getCacheInMemoryMissRate());
+						cacheStats.setOffHeapMissRate(cacheMbean.getCacheOffHeapMissRate());
+						cacheStats.setOnDiskMissRate(cacheMbean.getCacheOnDiskMissRate());
+
+						//evictions/updates rates
+						cacheStats.setCachePutRate(cacheMbean.getCachePutRate());
+						cacheStats.setEvictionRate(cacheMbean.getCacheEvictionRate());
+						cacheStats.setExpirationRate(cacheMbean.getCacheExpirationRate());
+						cacheStats.setRemoveRate(cacheMbean.getCacheRemoveRate());
+					}
 				}
 			} 
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 health ", e);
+			handleJMXException("Failed to get cache stats", e);
 		}
 
 		return cacheStats;
 	}
 
 	public CacheStats getCacheStats(final String cacheManagerName, final String cacheName, final String clientID) {
+		return getCacheStats(cacheManagerName, cacheName, clientID, false);
+	}
+
+	public CacheStats getCacheStats(final String cacheManagerName, final String cacheName, final String clientID, final boolean rawCountsOnly) {
 		CacheStats cacheStats = null;
 		try {
 			if (initConnection()) {
 				SampledCacheMBean cacheMbean = getCacheMBean(cacheManagerName, cacheName, clientID);
-				cacheStats = getCacheStatsFromMBean(cacheMbean);
+				cacheStats = getCacheStatsFromMBean(cacheMbean, rawCountsOnly);
 			} 
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 health ", e);
+			handleJMXException("Failed to get cache stats", e);
 		}
 
 		return cacheStats;
@@ -326,6 +415,10 @@ public class TCL2JMXClient extends TCJMXClient {
 	public Map<String, L2Info[]> getFullTopologyInfo() {
 		Map<String, L2Info[]> topologyInfo = null;
 		try {
+			if(log.isDebugEnabled()){
+				log.debug(String.format("Entering getFullTopologyInfo()"));
+			}
+			
 			if(initConnection()) {	
 				try {
 					topologyInfo = new HashMap<String, L2Info[]>();
@@ -340,8 +433,24 @@ public class TCL2JMXClient extends TCJMXClient {
 				}
 			}
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 state ", e);
+			handleJMXException("Failed to get topology info", e);
 		}
+		
+		if(log.isDebugEnabled()){
+			StringWriter debug = new StringWriter();
+			if(null != topologyInfo){
+				for(Entry<String, L2Info[]> c : topologyInfo.entrySet()){
+					debug.append("stripe ").append(c.getKey()).append(":");
+					L2Info[] l2Infos = c.getValue();
+					for(L2Info l2 : l2Infos){
+						debug.append("node ").append(l2.name()).append("~~");
+					}
+					debug.append("\n");
+				}
+			}
+			log.debug(String.format("getFullTopologyInfo()=%s", debug));
+		}
+		
 		return topologyInfo;
 	}
 
@@ -370,7 +479,7 @@ public class TCL2JMXClient extends TCJMXClient {
 				}*/
 			}
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 runtime info", e);
+			handleJMXException("Failed to get first l2 info", e);
 		}
 
 		return nodeFound;
@@ -398,7 +507,7 @@ public class TCL2JMXClient extends TCJMXClient {
 				}
 			}
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 runtime info", e);
+			handleJMXException("Failed to get current l2 info", e);
 		}
 
 		return nodeFound;
@@ -422,7 +531,7 @@ public class TCL2JMXClient extends TCJMXClient {
 				}
 			}
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 runtime info", e);
+			handleJMXException("Failed to get all l2 process info", e);
 		}
 
 		return l2RuntimeInfoNodes;
@@ -466,7 +575,7 @@ public class TCL2JMXClient extends TCJMXClient {
 				}
 			}
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 runtime info", e);
+			handleJMXException("Failed to get l2 process info", e);
 		}
 
 		return l2RuntimeInfo;
@@ -512,7 +621,7 @@ public class TCL2JMXClient extends TCJMXClient {
 				dataStats.setOffheapTotalAllocatedSize(dsoMbean.getOffheapTotalAllocatedSize());
 			}
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 offheap statistics", e);
+			handleJMXException("Failed to get l2 data statistics", e);
 		}
 
 		return dataStats;
@@ -559,7 +668,7 @@ public class TCL2JMXClient extends TCJMXClient {
 				}
 			}
 		} catch (Exception e) {
-			handleJMXException("Failed to get general l2 statistics", e);
+			handleJMXException("Failed to get general l1 client statistics", e);
 		}
 
 		return l1UsageStatList;

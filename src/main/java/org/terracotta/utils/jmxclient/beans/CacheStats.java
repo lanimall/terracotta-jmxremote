@@ -21,6 +21,18 @@ public class CacheStats {
 	private long evictionRate;
 	private long expirationRate;
 	private long removeRate;
+	private long cacheHitCount;
+	private long cacheMissCount;
+	private long evictedCount;
+	private long expiredCount;
+	private long putCount;
+	private long removedCount;
+	private long inMemoryHitCount;
+	private long offHeapHitCount;
+	private long onDiskHitCount;
+	private long inMemoryMissCount;
+	private long offHeapMissCount;
+	private long onDiskMissCount;
 	
 	public CacheStats(String cacheName) {
 		super();
@@ -77,6 +89,102 @@ public class CacheStats {
 
 	public void setLocalDiskSize(long localDiskSize) {
 		this.localDiskSize = localDiskSize;
+	}
+
+	public long getCacheHitCount() {
+		return cacheHitCount;
+	}
+
+	public void setCacheHitCount(long cacheHitCount) {
+		this.cacheHitCount = cacheHitCount;
+	}
+
+	public long getCacheMissCount() {
+		return cacheMissCount;
+	}
+
+	public void setCacheMissCount(long cacheMissCount) {
+		this.cacheMissCount = cacheMissCount;
+	}
+
+	public long getEvictedCount() {
+		return evictedCount;
+	}
+
+	public void setEvictedCount(long evictedCount) {
+		this.evictedCount = evictedCount;
+	}
+
+	public long getExpiredCount() {
+		return expiredCount;
+	}
+
+	public void setExpiredCount(long expiredCount) {
+		this.expiredCount = expiredCount;
+	}
+
+	public long getPutCount() {
+		return putCount;
+	}
+
+	public void setPutCount(long putCount) {
+		this.putCount = putCount;
+	}
+
+	public long getRemovedCount() {
+		return removedCount;
+	}
+
+	public void setRemovedCount(long removedCount) {
+		this.removedCount = removedCount;
+	}
+
+	public long getInMemoryHitCount() {
+		return inMemoryHitCount;
+	}
+
+	public void setInMemoryHitCount(long inMemoryHitCount) {
+		this.inMemoryHitCount = inMemoryHitCount;
+	}
+
+	public long getOffHeapHitCount() {
+		return offHeapHitCount;
+	}
+
+	public void setOffHeapHitCount(long offHeapHitCount) {
+		this.offHeapHitCount = offHeapHitCount;
+	}
+
+	public long getOnDiskHitCount() {
+		return onDiskHitCount;
+	}
+
+	public void setOnDiskHitCount(long onDiskHitCount) {
+		this.onDiskHitCount = onDiskHitCount;
+	}
+
+	public long getInMemoryMissCount() {
+		return inMemoryMissCount;
+	}
+
+	public void setInMemoryMissCount(long inMemoryMissCount) {
+		this.inMemoryMissCount = inMemoryMissCount;
+	}
+
+	public long getOffHeapMissCount() {
+		return offHeapMissCount;
+	}
+
+	public void setOffHeapMissCount(long offHeapMissCount) {
+		this.offHeapMissCount = offHeapMissCount;
+	}
+
+	public long getOnDiskMissCount() {
+		return onDiskMissCount;
+	}
+
+	public void setOnDiskMissCount(long onDiskMissCount) {
+		this.onDiskMissCount = onDiskMissCount;
 	}
 
 	public int getCacheHitRatio() {

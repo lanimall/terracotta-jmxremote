@@ -112,7 +112,7 @@ public abstract class TCJMXClient {
 	}
 
 	protected void handleJMXException(String message, Exception e) {
-		log.error("Closing JMX Connection on " + getHostPort() + " due to error: " + message, e);
+		log.error(String.format("Closing JMX Connection on %s due to error: %s", getHostPort(), message), e);
 		close();
 	}
 
@@ -121,32 +121,36 @@ public abstract class TCJMXClient {
 		T mBeanProxy = null;
 		try {
 			if (initConnection()) {
+				if(log.isDebugEnabled())
+					log.debug(String.format("Trying to get Mbean identified by %s and cast it to %s", objName.toString(), clazz.toString()));
+
 				mBeanProxy = MBeanServerInvocationProxy.newProxyInstance(mbs, objName, clazz, false);
 			} 
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 health ", e);
+			handleJMXException("Failed to get mbean", e);
 		}
 
 		return mBeanProxy;
 	}
-	
+
 	public boolean hasEhcacheMBeans(){
 		return true;
 	}
-	
+
 	public SampledCacheManagerMBean getCacheManagerMBean(final String cacheManagerName, final String clientID) {
 		SampledCacheManagerMBean cacheManagerMBean = null;
 		try {
 			if (initConnection()) {
-				String cacheManagerMbeanQuery = getSingleCacheManagerMBeanQuery(cacheManagerName, clientID);
+				String cacheManagerMbeanQuery = getCacheManagerMBeanQuery(cacheManagerName, clientID);
 				Set<ObjectName> cacheManagerNameSet = mbs.queryNames(ObjectName.getInstance(cacheManagerMbeanQuery), null);
-				if(null != cacheManagerNameSet){
+				if(null != cacheManagerNameSet && cacheManagerNameSet.size() > 0){
 					cacheManagerMBean = getMBean((ObjectName)cacheManagerNameSet.toArray()[0], SampledCacheManagerMBean.class);
-
+				} else {
+					log.warn(String.format("No cache manager mbean was found for query=%s",cacheManagerMbeanQuery));
 				}
 			} 
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 health ", e);
+			handleJMXException(String.format("Failed to get cache manager mbean for cachemanagername=%s and clientid=%s", cacheManagerName, clientID), e);
 		}
 		return cacheManagerMBean;
 	}
@@ -155,20 +159,22 @@ public abstract class TCJMXClient {
 		SampledCacheMBean cacheMbean = null;
 		try {
 			if (initConnection()) {
-				String cacheMbeanQuery = getSingleCacheMBeanQuery(cacheManagerName, cacheName, clientID);
+				String cacheMbeanQuery = getCacheMBeanQuery(cacheManagerName, cacheName, clientID);
 				Set<ObjectName> cacheNameSet = mbs.queryNames(ObjectName.getInstance(cacheMbeanQuery), null);
-				if(null != cacheNameSet){
+				if(null != cacheNameSet && cacheNameSet.size() > 0){
 					cacheMbean = getMBean((ObjectName)cacheNameSet.toArray()[0], SampledCacheMBean.class);
+				} else {
+					log.warn(String.format("No cache manager mbean was found for query=%s", cacheMbeanQuery));
 				}
 			} 
 		} catch (Exception e) {
-			handleJMXException("Failed to get l2 health ", e);
+			handleJMXException(String.format("Failed to get cache manager mbean for cachemanagername=%s, cachename=%s, and clientid=%s", cacheManagerName, cacheName, clientID), e);
 		}
 
 		return cacheMbean;
 	}
-	
-/*	public String[] getCacheNames() throws MalformedObjectNameException, NullPointerException, IOException {
+
+	/*	public String[] getCacheNames() throws MalformedObjectNameException, NullPointerException, IOException {
 		return getCacheNames(null);
 	}
 
@@ -233,41 +239,54 @@ public abstract class TCJMXClient {
 				for(ObjectName cmMBeanObjName : cacheManagerNames){
 					try {
 						if (cmMBeanObjName == null) {
-							System.out.println("Null object name for cache manager");
+							log.warn("Null object name for cache manager");
 							break;
 						}
 
 						SampledCacheManagerMBean cmMBean = null;
 						try {
-							cmMBean = (SampledCacheManagerMBean) MBeanServerInvocationProxy.newProxyInstance(
-									mbs, cmMBeanObjName, SampledCacheManagerMBean.class, false);
+							cmMBean = getMBean(cmMBeanObjName, SampledCacheManagerMBean.class);
 						} catch (Exception e) {
-							handleJMXException("Error trying to get CacheManager MBeans", e);
+							handleJMXException(String.format("Error trying to get CacheManager MBeans with objectname=%s", cmMBeanObjName), e);
 							break;
 						}
 
-						String cmClientID = cmMBeanObjName.getKeyProperty("node");
-						String cmName = cmMBean.getName();
-						String[] cacheNames = cmMBean.getCacheNames();
+						if(null != cmMBean){
+							String cmClientID = cmMBeanObjName.getKeyProperty("node");
+							String cmName = cmMBean.getName();
+							String[] cacheNames = cmMBean.getCacheNames();
 
-						CacheManagerInfo cmInfo = cacheManagersMap.get(cmName);
-						if (cmInfo == null) {
-							// newly found cachemanager
-							cmInfo = new CacheManagerInfo(cmClientID, cmName);
-							cmInfo.addCaches(cacheNames);
-
-							// add it to the map of CacheManagerInfo objects
-							cacheManagersMap.put(cmName, cmInfo);
-						} else {
-							// repeat cachemanager due to additional clients, just add the client						
-							cmInfo.addClientMbeanID(cmClientID);
-							cmInfo.addCaches(cacheNames);
-
-							//check if the current CM instance has more caches - if so, replace the one in the cmInfo.
-							// this covers the case where certain clients may not define / use all the caches in a given cache manager
-							if (cacheNames.length > cmInfo.getCaches().length) {
-								cmInfo.replaceMasterClientMbeanID(cmClientID);
+							if(log.isDebugEnabled()){
+								StringWriter cacheNamesDebug = new StringWriter();
+								if(null != cacheNames){
+									for(String c : cacheNames){
+										cacheNamesDebug.append(c).append(",");
+									}
+								}
+								log.debug(String.format("CM mbean: name=%s, cmClientId=%s, cachenames=%s", cmName, cmClientID, cacheNamesDebug.toString()));
 							}
+
+							CacheManagerInfo cmInfo = cacheManagersMap.get(cmName);
+							if (cmInfo == null) {
+								// newly found cachemanager
+								cmInfo = new CacheManagerInfo(cmClientID, cmName);
+								cmInfo.addCaches(cacheNames);
+
+								// add it to the map of CacheManagerInfo objects
+								cacheManagersMap.put(cmName, cmInfo);
+							} else {
+								// repeat cachemanager due to additional clients, just add the client						
+								cmInfo.addClientMbeanID(cmClientID);
+								cmInfo.addCaches(cacheNames);
+
+								//check if the current CM instance has more caches - if so, replace the one in the cmInfo.
+								// this covers the case where certain clients may not define / use all the caches in a given cache manager
+								if (cacheNames.length > cmInfo.getCaches().length) {
+									cmInfo.replaceMasterClientMbeanID(cmClientID);
+								}
+							}
+						} else {
+							log.warn("The cache manager mbean object is null...");
 						}
 					} catch (Exception e) {
 						log.error("Error during CacheManager " + cmMBeanObjName + " bean crawl", e);
@@ -280,26 +299,16 @@ public abstract class TCJMXClient {
 
 		return cacheManagersMap;
 	}
-	
+
 	public String getEhCacheMBeanQuery() {
 		return "net.sf.ehcache:*";
 	}
 
 	public String getAllSampledCacheManagerMBeanQuery(){
-		return getMultiCacheManagerMBeanQuery(null, null);
+		return getCacheManagerMBeanQuery(null, null);
 	}
 
-	public String getSingleCacheManagerMBeanQuery(String cacheManagerName, String clientID) {
-		StringWriter sw = new StringWriter();
-		sw.append("net.sf.ehcache:type=SampledCacheManager");
-		sw.append(",name=").append((null != cacheManagerName)?cacheManagerName:"");
-		sw.append(",clients=Clients").append(",node=").append((null != clientID)?clientID:"");
-		sw.append(",*");
-
-		return sw.toString();
-	}
-	
-	public String getMultiCacheManagerMBeanQuery(String cacheManagerName, String clientID) {
+	public String getCacheManagerMBeanQuery(String cacheManagerName, String clientID) {
 		StringWriter sw = new StringWriter();
 		sw.append("net.sf.ehcache:type=SampledCacheManager");
 
@@ -311,10 +320,14 @@ public abstract class TCJMXClient {
 
 		sw.append(",*");
 
+		if(log.isDebugEnabled()){
+			log.debug(String.format("getCacheManagerMBeanQuery(%s,%s)=%s", cacheManagerName, clientID, sw.toString()));
+		}
+
 		return sw.toString();
 	}
 
-	public String getSingleCacheMBeanQuery(String cacheManagerName, String cacheName, String clientID) {
+	public String getCacheMBeanQuery(String cacheManagerName, String cacheName, String clientID) {
 		StringWriter sw = new StringWriter();
 		sw.append("net.sf.ehcache:type=SampledCache");
 		sw.append(",SampledCacheManager=").append((null != cacheManagerName)?cacheManagerName:"");
@@ -322,29 +335,10 @@ public abstract class TCJMXClient {
 		sw.append(",clients=Clients").append(",node=").append((null != clientID)?clientID:"");
 		sw.append(",*");
 
-		return sw.toString();
-	}
-	
-	public String getMultiCacheMBeanQuery(String cacheManagerName, String cacheName, String clientID) {
-		StringWriter sw = new StringWriter();
-		sw.append("net.sf.ehcache:type=SampledCache");
-
-		if(null != cacheManagerName)
-			sw.append(",SampledCacheManager=").append(cacheManagerName);
-
-		if(null != cacheName)
-			sw.append(",name=").append(cacheName);
-
-		if(null != clientID)
-			sw.append(",clients=Clients").append(",node=").append(clientID);
-		
-		sw.append(",*");
+		if(log.isDebugEnabled()){
+			log.debug(String.format("getCacheMBeanQuery(%s,%s,%s)=%s", cacheManagerName, cacheName, clientID, sw.toString()));
+		}
 
 		return sw.toString();
 	}
-	
-//	public String getClientMBeanName(String cacheManagerName, String cacheName, String clientID) {
-//		return "net.sf.ehcache:SampledCacheManager="+cacheManagerName+",name="+cacheName+",type=SampledCache,clients=Clients,node="+clientID;
-//		//String clientObjectNames = "net.sf.ehcache:SampledCacheManager="+cmInfo.getName()+",name="+cmInfo.getCaches()[i]+",type=SampledCache,clients=Clients,node=*";
-//	}
 }
