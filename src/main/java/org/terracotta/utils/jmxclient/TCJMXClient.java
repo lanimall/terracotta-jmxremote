@@ -23,15 +23,13 @@ import com.tc.admin.common.MBeanServerInvocationProxy;
 public abstract class TCJMXClient {
 	private static Logger log = LoggerFactory.getLogger(TCJMXClient.class);
 
-	private volatile boolean initialized = false;
-
 	protected final String username;
 	protected final String password;
 	protected final String host;
 	protected final int port;
 
+	protected volatile JMXConnector jmxConnector;
 	protected MBeanServerConnection mbs;
-	protected JMXConnector jmxConnector;
 
 	protected TCJMXClient(String username, String password, String host, int port) {
 		super();
@@ -50,10 +48,6 @@ public abstract class TCJMXClient {
 		}
 
 		return initialize;
-	}
-
-	public boolean isInitialized() {
-		return initialized;
 	}
 
 	public String getUsername() {
@@ -82,35 +76,40 @@ public abstract class TCJMXClient {
 		close();
 	}
 
-	public synchronized void close(){
-		if (jmxConnector != null) {
-			try {
-				//System.out.println("try to close the connection!");
-				jmxConnector.close();
-			} catch (Exception e1) {
-				log.error("Exception while trying to close the JMX connector for port no: " + port, e1);
-			} finally {
-				jmxConnector = null;
-			}
-		} 
-		jmxConnector = null;
-		initialized = false;
-	}
-
 	protected abstract void initConnectionInternal() throws Exception;
 
-	protected synchronized boolean initConnection() {
-		if(!initialized) {
-			try {
-				initConnectionInternal();
-				initialized = true;
-			} catch(Exception e) {
-				handleJMXException("Connection refused to " + getHostPort(), e);
+	protected boolean initConnection() {
+		JMXConnector result = jmxConnector;
+		if (result == null) {
+			synchronized (this) {
+				result = jmxConnector;
+				if (result == null) {
+					try {
+						initConnectionInternal();
+					} catch (Exception e1) {
+						log.error("Exception while trying to open the JMX connector to " + getHostPort(), e1);
+					}
+				}
 			}
 		}
-		return initialized;
+		return (null != result);
 	}
-
+	
+	public void close(){
+		if (jmxConnector != null) {
+			synchronized (jmxConnector) {
+				try {
+					//System.out.println("try to close the connection!");
+					jmxConnector.close();
+				} catch (Exception e1) {
+					log.error("Exception while trying to close the JMX connector for port no: " + port, e1);
+				} finally {
+					jmxConnector = null;
+				}
+			}
+		}
+	}
+	
 	protected void handleJMXException(String message, Exception e) {
 		log.error(String.format("Closing JMX Connection on %s due to error: %s", getHostPort(), message), e);
 		close();
@@ -173,57 +172,6 @@ public abstract class TCJMXClient {
 
 		return cacheMbean;
 	}
-
-	/*	public String[] getCacheNames() throws MalformedObjectNameException, NullPointerException, IOException {
-		return getCacheNames(null);
-	}
-
-	public String[] getCacheNames(String cacheManagerName) throws MalformedObjectNameException, NullPointerException, IOException {
-		String[] cacheNames = null;
-		try {
-			if (initConnection()) {
-				String cacheManagerMbeanQuery = getSampledCacheManagerMBeanQuery(cacheManagerName);
-
-				Set<ObjectName> cacheManagerNameSet = mbs.queryNames(ObjectName.getInstance(cacheManagerMbeanQuery), null);
-				SampledCacheManagerMBean cacheManagerMBean = getMBean((ObjectName)cacheManagerNameSet.toArray()[0], SampledCacheManagerMBean.class);
-
-				if(null != cacheManagerMBean)
-					cacheNames = cacheManagerMBean.getCacheNames();
-			} 
-		} catch (Exception e) {
-			handleJMXException("Failed to get l2 health ", e);
-		}
-
-		return cacheNames;
-	}*/
-
-	/*public Map<String, SampledCacheMBean> getCacheMBeans(String cacheManagerName) throws MalformedObjectNameException, NullPointerException, IOException {
-		String[] cacheNames = getCacheNames(cacheManagerName);
-		return getCacheMBeans(cacheManagerName, cacheNames);
-	}*/
-
-	/*public Map<String, SampledCacheMBean> getCacheMBeans(String cacheManagerName, String[] cacheNames) throws MalformedObjectNameException, NullPointerException, IOException {
-		Map<String, SampledCacheMBean> cacheMbeans = new HashMap<String, SampledCacheMBean>();
-		try {
-			if (initConnection()) {
-				if(null != cacheNames){
-					for(String cachename : cacheNames){
-						String cacheMbeanQuery = getCacheMBeanQuery(cacheManagerName, cachename);
-
-						Set<ObjectName> cacheNameSet = mbs.queryNames(ObjectName.getInstance(cacheMbeanQuery), null);
-
-						SampledCacheMBean cacheMBean = getMBean((ObjectName)cacheNameSet.toArray()[0], SampledCacheMBean.class);
-
-						cacheMbeans.put(cachename, cacheMBean);
-					}
-				}
-			} 
-		} catch (Exception e) {
-			handleJMXException("Failed to get l2 health ", e);
-		}
-
-		return cacheMbeans;
-	}*/
 
 	public Map<String, CacheManagerInfo> getCacheManagerInfo() {
 		Map<String, CacheManagerInfo> cacheManagersMap = null;

@@ -58,7 +58,7 @@ public class TCL2JMXClient extends TCJMXClient {
 		if(log.isDebugEnabled()){
 			log.debug(String.format("Entering initConnectionInternal()"));
 		}
-		
+
 		log.info("Establishing a new JMX Connection to " + getHostPort());
 		if(useRMI){ //using normal RMI
 			log.info("\nCreate an RMI connector client and connect it to the RMI connector server");
@@ -93,7 +93,7 @@ public class TCL2JMXClient extends TCJMXClient {
 			l2MBean = MBeanServerInvocationProxy.newMBeanProxy(mbs, L2MBeanNames.TC_SERVER_INFO, TCServerInfoMBean.class, false);
 
 			//dsoMbean - Needed to get client mbeans
-			dsoMbean = (DSOMBean) MBeanServerInvocationProxy.newMBeanProxy(mbs, L2MBeanNames.DSO, DSOMBean.class, false);
+			dsoMbean = MBeanServerInvocationProxy.newMBeanProxy(mbs, L2MBeanNames.DSO, DSOMBean.class, false);
 		}
 	}
 
@@ -103,7 +103,7 @@ public class TCL2JMXClient extends TCJMXClient {
 			if(log.isDebugEnabled()){
 				log.debug(String.format("Entering isNodeActive()"));
 			}
-			
+
 			if (initConnection()) {
 				active = l2MBean.isActive();
 			} 
@@ -127,7 +127,7 @@ public class TCL2JMXClient extends TCJMXClient {
 			if(log.isDebugEnabled()){
 				log.debug(String.format("Entering getClientCount()"));
 			}
-			
+
 			if (initConnection()) {
 				if(!l2MBean.isActive())
 					throw new JMXClientException("Node must be active to provide accurate client count.");
@@ -150,7 +150,7 @@ public class TCL2JMXClient extends TCJMXClient {
 			if(log.isDebugEnabled()){
 				log.debug(String.format("Entering getClientIDs()"));
 			}
-			
+
 			if (initConnection()) {
 				if(null != l2MBean && !l2MBean.isActive())
 					throw new JMXClientException("Node must be active to provide accurate client count.");
@@ -196,7 +196,7 @@ public class TCL2JMXClient extends TCJMXClient {
 			if(log.isDebugEnabled()){
 				log.debug(String.format("Entering getClients()"));
 			}
-			
+
 			if (initConnection()) {
 				if(null != l2MBean && !l2MBean.isActive())
 					throw new JMXClientException("Node must be active to provide accurate client count.");
@@ -205,29 +205,36 @@ public class TCL2JMXClient extends TCJMXClient {
 				if(null != clientsMBeans && clientsMBeans.length > 0){
 					clientsInfoArray = new ArrayList<L2ClientRuntimeInfo>();
 					for(ObjectName clientMBean: clientsMBeans){
-						DSOClientMBean dsoClientMBean = getMBean(clientMBean, DSOClientMBean.class);
-						if(null != dsoClientMBean){
-							L2ClientRuntimeInfo l2ClientInfo = new L2ClientRuntimeInfo(
-									new L2ClientID(
-											dsoClientMBean.getClientID().toString(), 
-											dsoClientMBean.getRemoteAddress(),
-											dsoClientMBean.getNodeID(),
-											dsoClientMBean.getChannelID().toString(),
-											dsoClientMBean.isTunneledBeansRegistered()
-											)
-									);
+						try {
+							//check if connection is still opened on each iteration
+							if (initConnection()) {
+								DSOClientMBean dsoClientMBean = getMBean(clientMBean, DSOClientMBean.class);
+								if(null != dsoClientMBean){
+									L2ClientRuntimeInfo l2ClientInfo = new L2ClientRuntimeInfo(
+											new L2ClientID(
+													dsoClientMBean.getClientID().toString(), 
+													dsoClientMBean.getRemoteAddress(),
+													dsoClientMBean.getNodeID(),
+													dsoClientMBean.getChannelID().toString(),
+													dsoClientMBean.isTunneledBeansRegistered()
+													)
+											);
 
-							l2ClientInfo.setLiveObjectCount(dsoClientMBean.getLiveObjectCount());
-							l2ClientInfo.setObjectFaultRate(dsoClientMBean.getObjectFaultRate());
-							l2ClientInfo.setObjectFlushRate(dsoClientMBean.getObjectFlushRate());
-							l2ClientInfo.setPendingTransactionsCount(dsoClientMBean.getPendingTransactionsCount());
-							l2ClientInfo.setServerMapGetSizequestsCount(dsoClientMBean.getServerMapGetSizeRequestsCount());
-							l2ClientInfo.setServerMapGetSizeRequestsRate(dsoClientMBean.getServerMapGetSizeRequestsRate());
-							l2ClientInfo.setServerMapGetValueRequestsCount(dsoClientMBean.getServerMapGetValueRequestsCount());
-							l2ClientInfo.setServerMapGetValueRequestsRate(dsoClientMBean.getServerMapGetValueRequestsRate());
-							l2ClientInfo.setTransactionRate(dsoClientMBean.getTransactionRate());
+									l2ClientInfo.setLiveObjectCount(dsoClientMBean.getLiveObjectCount());
+									l2ClientInfo.setObjectFaultRate(dsoClientMBean.getObjectFaultRate());
+									l2ClientInfo.setObjectFlushRate(dsoClientMBean.getObjectFlushRate());
+									l2ClientInfo.setPendingTransactionsCount(dsoClientMBean.getPendingTransactionsCount());
+									l2ClientInfo.setServerMapGetSizequestsCount(dsoClientMBean.getServerMapGetSizeRequestsCount());
+									l2ClientInfo.setServerMapGetSizeRequestsRate(dsoClientMBean.getServerMapGetSizeRequestsRate());
+									l2ClientInfo.setServerMapGetValueRequestsCount(dsoClientMBean.getServerMapGetValueRequestsCount());
+									l2ClientInfo.setServerMapGetValueRequestsRate(dsoClientMBean.getServerMapGetValueRequestsRate());
+									l2ClientInfo.setTransactionRate(dsoClientMBean.getTransactionRate());
 
-							clientsInfoArray.add(l2ClientInfo);
+									clientsInfoArray.add(l2ClientInfo);
+								}
+							}
+						} catch (Exception e) {
+							log.error(String.format("An issue happened with the mbean instance lookup [%s]", clientMBean.getCanonicalName()), e);
 						}
 					}
 				}
@@ -245,7 +252,7 @@ public class TCL2JMXClient extends TCJMXClient {
 			}
 			log.debug(String.format("getClients()=%s", debug));
 		}
-		
+
 		return (null != clientsInfoArray)?clientsInfoArray.toArray(new L2ClientRuntimeInfo[clientsInfoArray.size()]):null;
 	}
 
@@ -254,7 +261,7 @@ public class TCL2JMXClient extends TCJMXClient {
 			if(log.isDebugEnabled()){
 				log.debug(String.format("Entering enableCacheStats(%s, %s, %s)", cacheManagerName, cacheName, clientID));
 			}
-			
+
 			if (initConnection()) {
 				SampledCacheMBean cacheMbean = getCacheMBean(cacheManagerName, cacheName, clientID);
 				cacheMbean.enableStatistics();
@@ -270,7 +277,7 @@ public class TCL2JMXClient extends TCJMXClient {
 			if(log.isDebugEnabled()){
 				log.debug(String.format("Entering disableCacheStats(%s, %s, %s)", cacheManagerName, cacheName, clientID));
 			}
-			
+
 			if (initConnection()) {
 				SampledCacheMBean cacheMbean = getCacheMBean(cacheManagerName, cacheName, clientID);
 				cacheMbean.disableSampledStatistics();
@@ -291,7 +298,7 @@ public class TCL2JMXClient extends TCJMXClient {
 			if(log.isDebugEnabled()){
 				log.debug(String.format("Entering enableStatisticsAndGetCacheStats(%s, %s, %s)", cacheManagerName, cacheName, clientID));
 			}
-			
+
 			if (initConnection()) {
 				SampledCacheMBean cacheMbean = getCacheMBean(cacheManagerName, cacheName, clientID);
 				if(!cacheMbean.isStatisticsEnabled()){
@@ -316,7 +323,7 @@ public class TCL2JMXClient extends TCJMXClient {
 			if(log.isDebugEnabled()){
 				log.debug(String.format("Entering getCacheStatsAndDisableStatistics(%s, %s, %s)", cacheManagerName, cacheName, clientID));
 			}
-			
+
 			if (initConnection()) {
 				SampledCacheMBean cacheMbean = getCacheMBean(cacheManagerName, cacheName, clientID);
 				cacheStats = getCacheStatsFromMBean(cacheMbean, rawCountsOnly);
@@ -338,7 +345,7 @@ public class TCL2JMXClient extends TCJMXClient {
 			if(log.isDebugEnabled()){
 				log.debug(String.format("Entering getCacheStatsFromMBean(cacheMbean, rawCountsOnly)"));
 			}
-			
+
 			if (initConnection()) {
 				if(null != cacheMbean){
 					cacheStats = new CacheStats(cacheMbean.getCacheName());
@@ -418,7 +425,7 @@ public class TCL2JMXClient extends TCJMXClient {
 			if(log.isDebugEnabled()){
 				log.debug(String.format("Entering getFullTopologyInfo()"));
 			}
-			
+
 			if(initConnection()) {	
 				try {
 					topologyInfo = new HashMap<String, L2Info[]>();
@@ -435,7 +442,7 @@ public class TCL2JMXClient extends TCJMXClient {
 		} catch (Exception e) {
 			handleJMXException("Failed to get topology info", e);
 		}
-		
+
 		if(log.isDebugEnabled()){
 			StringWriter debug = new StringWriter();
 			if(null != topologyInfo){
@@ -450,7 +457,7 @@ public class TCL2JMXClient extends TCJMXClient {
 			}
 			log.debug(String.format("getFullTopologyInfo()=%s", debug));
 		}
-		
+
 		return topologyInfo;
 	}
 
