@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.terracotta.utils</groupId>
 	<artifactId>terracotta-3.7-jmx-sdk</artifactId>
-	<version>1.0.1</version>
+	<version>1.0.2</version>
 	<name>Terracotta 3.7.x JMX Client SDK</name>
 	<description>JMX Client SDK for Terracotta 3.7.x</description>
 
@@ -33,29 +33,38 @@
 			<groupId>net.sf.ehcache</groupId>
 			<artifactId>ehcache-core-ee</artifactId>
 			<version>${ehcache-core-ee.version}</version>
-			<scope>provided</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>net.sf.ehcache</groupId>
 			<artifactId>ehcache-terracotta-ee</artifactId>
 			<version>${ehcache-terracotta-ee.version}</version>
-			<scope>provided</scope>
 		</dependency>
+
+        <dependency>
+            <groupId>com.tc</groupId>
+            <artifactId>tc</artifactId>
+            <version>3.7.7</version>
+        </dependency>
+        <dependency>
+            <groupId>com.tc</groupId>
+            <artifactId>tim-api</artifactId>
+            <version>1.3.0</version>
+        </dependency>
 
 		<!-- SLF4J -->
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
 			<version>${slf4j.version}</version>
-			<scope>provided</scope>
+            <scope>provided</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
 			<version>${slf4j.version}</version>
-			<scope>provided</scope>
+            <scope>provided</scope>
 		</dependency>
 
 		<dependency>
@@ -110,4 +119,19 @@
 			</releases>
 		</repository>
 	</repositories>
+
+    <distributionManagement>
+        <downloadUrl>https://github.com/jackbeps/O2E</downloadUrl>
+        <repository>
+            <id>saggs_releases</id>
+            <name>SAGGS Releases</name>
+            <url>http://bieber.softwareaggov.com:8080/nexus/content/repositories/releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>saggs_snapshots</id>
+            <name>SAGGS Snapshots</name>
+            <url>http://bieber.softwareaggov.com:8080/nexus/content/repositories/snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
 </project>
