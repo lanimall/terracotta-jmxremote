@@ -54,9 +54,10 @@ public class TCL2JMXClient extends TCJMXClient {
 		this.useRMI = useRMI;
 	}
 
-	protected final void initConnectionInternal() throws Exception {
+	protected final JMXConnector createJMXConnector() throws Exception {
+		JMXConnector jmxConnector = null;
 		if(log.isDebugEnabled()){
-			log.debug(String.format("Entering initConnectionInternal()"));
+			log.debug(String.format("Entering createJMXConnector()"));
 		}
 
 		log.info("Establishing a new JMX Connection to " + getHostPort());
@@ -78,14 +79,17 @@ public class TCL2JMXClient extends TCJMXClient {
 
 			JMXServiceURL serviceUrl = new JMXServiceURL(url);
 			jmxConnector = JMXConnectorFactory.connect(serviceUrl, env);
-			if(null != jmxConnector)
-				mbs = jmxConnector.getMBeanServerConnection();
 		} else {
 			log.info("\nCreate an JMX connector client");
 			jmxConnector = CommandLineBuilder.getJMXConnector(username, password, host, port);
-
-			if(null != jmxConnector)
-				mbs = jmxConnector.getMBeanServerConnection();
+		}
+		
+		return jmxConnector;
+	}
+	
+	protected final void initConnectionInternal() throws Exception {
+		if(log.isDebugEnabled()){
+			log.debug(String.format("Entering initConnectionInternal()"));
 		}
 
 		if(null != mbs){
@@ -286,6 +290,25 @@ public class TCL2JMXClient extends TCJMXClient {
 		} catch (Exception e) {
 			handleJMXException("Failed to disable cache stats", e);
 		}
+	}
+	
+	public boolean isCacheStatsEnabled(final String cacheManagerName, final String cacheName, final String clientID) {
+		boolean isCacheStatsEnabled = false;
+		
+		try {
+			if (initConnection()) {
+				SampledCacheMBean cacheMbean = getCacheMBean(cacheManagerName, cacheName, clientID);
+				isCacheStatsEnabled = cacheMbean.isStatisticsEnabled();
+			} 
+		} catch (Exception e) {
+			handleJMXException("Failed to disable cache stats", e);
+		}
+		
+		if(log.isDebugEnabled()){
+			log.debug(String.format("CacheStats(%s, %s, %s) enabled? %s", cacheManagerName, cacheName, clientID, new Boolean(isCacheStatsEnabled).toString()));
+		}
+		
+		return isCacheStatsEnabled;
 	}
 
 	public CacheStats enableStatisticsAndGetCacheStats(final String cacheManagerName, final String cacheName, final String clientID) {

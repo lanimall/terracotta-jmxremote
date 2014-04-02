@@ -27,7 +27,12 @@ public class TCL1JMXClient extends TCJMXClient {
 		this.useJbossPre6 = true;
 	}
 	
-	protected final void initConnectionInternal() throws Exception {
+	protected final JMXConnector createJMXConnector() throws Exception {
+		JMXConnector jmxConnector = null;
+		if(log.isDebugEnabled()){
+			log.debug(String.format("Entering createJMXConnector()"));
+		}
+		
 		System.out.println("Establishing a new JMX Connection to " + getHostPort());
 		if(useRMI){
 			log.info("\nCreate an RMI connector client and connect it to the RMI connector server");
@@ -47,7 +52,7 @@ public class TCL1JMXClient extends TCJMXClient {
 				}
 
 				Context ctx = new InitialContext(env);  
-				mbs = (MBeanServerConnection) ctx.lookup("jmx/invoker/RMIAdaptor");
+				MBeanServerConnection mbs = (MBeanServerConnection) ctx.lookup("jmx/invoker/RMIAdaptor");
 				System.out.println("Version = " + (String)mbs.getAttribute(new ObjectName("jboss.system:type=Server"), new String("Version")));
 			} else {
 				//using normal RMI
@@ -66,12 +71,16 @@ public class TCL1JMXClient extends TCJMXClient {
 
 				JMXServiceURL serviceUrl = new JMXServiceURL(url);
 				jmxConnector = JMXConnectorFactory.connect(serviceUrl, env);
-				mbs = jmxConnector.getMBeanServerConnection();
 			} 
 		} else {
 			log.info("\nCreate an JMX connector client");
 			jmxConnector = CommandLineBuilder.getJMXConnector(username, password, host, port);
-			mbs = jmxConnector.getMBeanServerConnection();
 		}
+		
+		return jmxConnector;
+	}
+	
+	protected final void initConnectionInternal() throws Exception {
+		//do nothing
 	}
 }

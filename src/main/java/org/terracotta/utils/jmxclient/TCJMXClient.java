@@ -76,15 +76,23 @@ public abstract class TCJMXClient {
 		close();
 	}
 
+	protected abstract JMXConnector createJMXConnector() throws Exception;
+	
 	protected abstract void initConnectionInternal() throws Exception;
 
 	protected boolean initConnection() {
 		JMXConnector result = jmxConnector;
 		if (result == null) {
-			synchronized (this) {
+			synchronized (this.getClass()) {
 				result = jmxConnector;
 				if (result == null) {
 					try {
+						result = createJMXConnector();
+						jmxConnector = result;
+						
+						if(null != jmxConnector)
+							mbs = jmxConnector.getMBeanServerConnection();
+						
 						initConnectionInternal();
 					} catch (Exception e1) {
 						log.error("Exception while trying to open the JMX connector to " + getHostPort(), e1);
@@ -97,7 +105,7 @@ public abstract class TCJMXClient {
 	
 	public void close(){
 		if (jmxConnector != null) {
-			synchronized (jmxConnector) {
+			synchronized (this.getClass()) {
 				try {
 					//System.out.println("try to close the connection!");
 					jmxConnector.close();
